@@ -209,7 +209,18 @@ class Model_NP_HV(Model):
         ####
         def get_gradient_hv(l, h_ch, v_ch):
             """
-            Central difference to approximate the gradient by using Sobel kernel of size 5x5
+            Calculate the horizontal partial differentiation for horizontal channel
+            and the vertical partial differentiation for vertical channel.
+
+            The partial differentiation is approximated by calculating the central differnce
+            which is obtained by using Sobel kernel of size 5x5. The boundary is zero-padded
+            when channel is convolved with the Sobel kernel.
+
+            Args:
+                l (tensor): tensor of shape NHWC with C should be 2 (1 channel for horizonal 
+                            and 1 channel for vertical)
+                h_ch(int) : index within C axis of `l` that corresponds to horizontal channel
+                v_ch(int) : index within C axis of `l` that corresponds to vertical channel
             """
             def get_sobel_kernel(size):
                 assert size % 2 == 1, 'Must be odd, get size=%d' % size
@@ -279,11 +290,10 @@ class Model_NP_HV(Model):
                 add_moving_summary(term_loss)
                 loss = loss + term_loss
 
-                term_loss = dice_loss(soft_class[...,0], one_type[...,0]) \
-                          + dice_loss(soft_class[...,1], one_type[...,1]) \
-                          + dice_loss(soft_class[...,2], one_type[...,2]) \
-                          + dice_loss(soft_class[...,3], one_type[...,3]) \
-                          + dice_loss(soft_class[...,4], one_type[...,4]) 
+                term_loss = 0
+                for type_id in range(self.nr_types):
+                    term_loss += dice_loss(soft_class[...,type_id], 
+                                           one_type[...,type_id])
                 term_loss = tf.identity(term_loss, name='loss-dice-class')
                 add_moving_summary(term_loss)
                 loss = loss + term_loss
